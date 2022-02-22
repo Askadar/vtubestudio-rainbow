@@ -3,7 +3,7 @@
 	"description": "Allows to rainbow cycle any ArtMesh(es) in VTube Studio",
 	"scripts": {
 		"dev": "parcel serve",
-		"build": "parcel build"
+		"build": "rimraf pages && parcel build --dist-dir pages --no-source-maps"
 	},
 	"version": "1.0.0",
 	"source": "src/index.html",
@@ -20,6 +20,7 @@
 		"@parcel/transformer-vue": "2.3.2",
 		"parcel": "^2.3.2",
 		"process": "^0.11.10",
+		"rimraf": "^3.0.2",
 		"typescript": "^4.5.5"
 	}
 }
