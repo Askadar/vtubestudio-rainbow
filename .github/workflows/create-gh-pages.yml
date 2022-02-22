@@ -1,4 +1,4 @@
-name: Deploy App to GH Pages
+name: Deploy app to GH Pages
 
 on:
   push:
@@ -13,7 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
 
     - name: Set up Node.js
       uses: actions/setup-node@v2
@@ -21,7 +20,10 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - name: npm install, build, and test
+    - name: Fetch Current Repo
+      uses: actions/checkout@v2
+
+    - name: npm install, build, and deploy
       run: |
         npm install
         npm run build
