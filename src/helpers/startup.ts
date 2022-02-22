@@ -12,7 +12,7 @@ const loadKey = (): string | undefined => {
 
 export const startup = () => {
 	const webSocket = new WebSocket('ws://localhost:8001')
-	const $failed = fromEvent(webSocket, 'error')
+	const $failed = fromEvent(webSocket, 'error').pipe(shareReplay(1))
 	const $ready = fromEvent<void>(webSocket, 'open').pipe(take(1), shareReplay(1))
 
 	const bus = new WebSocketBus(webSocket)
