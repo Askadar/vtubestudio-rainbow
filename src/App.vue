@@ -36,18 +36,23 @@
 							clearable
 						/>
 					</n-form-item>
-					<n-form-item label="Update rate, how many times a second color will shift" path="rate">
-						<n-slider v-model:value="settings.rate" :step="1" :min="5" :max="60" />
-						<n-input-number v-model:value="settings.rate" :step="1" :min="5" :max="60" />
-					</n-form-item>
 					<n-form-item path="jebMode">
 						<n-space vertical>
 							<n-checkbox
 								v-model:checked="settings.jebMode"
-							>Whether to use simple rainbow cycle provided by VTube Studio.</n-checkbox>Should be much faster because default custom implementation sends lots of commands
-							with *rate* setting, so it might be less performant. Enable if there are slowdowns
+							>Whether to use simple rainbow cycle provided by VTube Studio.</n-checkbox>
+							<p v-if="settings.jebMode">
+								Should be much faster because default custom implementation sends lots of commands
+								with *rate* setting, so it might be less performant. Enable if there are slowdowns
+							</p>
 						</n-space>
 					</n-form-item>
+					<template v-if="!settings.jebMode">
+						<n-form-item label="Update rate, how many times a second color will shift" path="rate">
+							<n-slider v-model:value="settings.rate" :step="1" :min="5" :max="60" />
+							<n-input-number v-model:value="settings.rate" :step="1" :min="5" :max="60" />
+						</n-form-item>
+					</template>
 					<n-form-item>
 						<n-button @click="saveSettings">Save settings</n-button>
 					</n-form-item>
@@ -80,22 +85,22 @@ import {
 	NCheckbox,
 } from 'naive-ui'
 import { SelectMixedOption } from 'naive-ui/lib/select/src/interface'
-import { ReplaySubject, interval, of } from 'rxjs'
+import { BehaviorSubject, interval, timer } from 'rxjs'
 import {
 	mergeMap,
 	tap,
 	toArray,
 	filter,
-	switchMap,
 	takeUntil,
-	delay,
+	map,
 	skip,
 } from 'rxjs/operators'
 import { Plugin } from 'vtubestudio'
 
 import { get, set } from './helpers/storage'
 import { startup } from './helpers/startup'
-import colours from './helpers/colours'
+import { tintClear, tintCustom, tintJeb } from './helpers/vtube'
+import { log } from './helpers/logging'
 
 export default defineComponent({
 	components: {
@@ -133,71 +138,30 @@ export default defineComponent({
 			tap((meshes) => set('meshes', meshes)),
 		)
 
+		const $disableSignal = () => this.enabled$.pipe(filter(a => !a))
+
 		const $rainbow = this.enabled$.pipe(
-			skip(1),
-			switchMap((enabled) =>
-				enabled
-					? this.settings.jebMode
-						? of(null).pipe(
-							delay(1),
-							tap(() =>
-								plugin.apiClient.colorTint({
-									colorTint: {
-										colorR: 255,
-										colorG: 255,
-										colorB: 255,
-										colorA: 255,
-										jeb_: true,
-									},
-									artMeshMatcher: {
-										tintAll: false,
-										nameContains: this.settings.meshMatch?.split(','),
-										nameExact: this.settings.meshes,
-									},
-								})
-							)
-						)
-						: interval(1e3 / this.settings.rate).pipe(
-							takeUntil(this.enabled$.pipe(filter((a) => !a))),
-							tap((index) =>
-								plugin.apiClient.colorTint({
-									colorTint: {
-										colorR: colours[index % colours.length][0],
-										colorG: colours[index % colours.length][1],
-										colorB: colours[index % colours.length][2],
-										colorA: 255,
-										mixWithSceneLightingColor: 0.8,
-									},
-									artMeshMatcher: {
-										tintAll: false,
-										nameContains: this.settings.meshMatch?.split(','),
-										nameExact: this.settings.meshes,
-									},
-								})
-							)
-						)
-					: of(null).pipe(
-						delay(1),
-						tap(() =>
-							plugin.apiClient.colorTint({
-								colorTint: {
-									colorR: 255,
-									colorG: 255,
-									colorB: 255,
-									colorA: 255,
-								},
-								artMeshMatcher: {
-									tintAll: false,
-									nameContains: this.settings.meshMatch?.split(','),
-									nameExact: this.settings.meshes,
-								},
-							})
+			map(() =>
+				this.settings.jebMode
+					// Timer holds observable without completing it, until $disableSignal to prevent instant cleanup down the line
+					? timer(5, 24 * 3600 * 1e3).pipe(
+						takeUntil($disableSignal()),
+						tap(
+							tintJeb(plugin, this.settings)
 						)
 					)
-			)
+					: interval(Math.min(12, 1e3 / this.settings.rate)).pipe(
+						takeUntil($disableSignal()),
+						tap(
+							tintCustom(plugin, this.settings)
+						)
+					)
+			),
+			map(obs => obs.pipe(takeUntil(this.enabled$.pipe(skip(1)))).subscribe((...args) => log('inside', ...args))),
+			tap(tintClear(plugin, this.settings)),
 		)
 
-		$rainbow.subscribe(() => null)
+		$rainbow.subscribe((sub) => log('outside', sub))
 		$meshList.subscribe((meshes) => (this.meshesList = meshes))
 
 		this.settings = {
@@ -220,7 +184,7 @@ export default defineComponent({
 			failed: false as boolean | string,
 
 			enabled: false,
-			enabled$: new ReplaySubject<boolean>(1),
+			enabled$: new BehaviorSubject<boolean>(false),
 			settings: {
 				meshMatch: '',
 				meshes: [] as string[],
