@@ -25,6 +25,7 @@ export const tintJeb = (plugin: Ref<Plugin | undefined>, settings: Settings) => 
 			colorB: 255,
 			colorA: 255,
 			jeb_: true,
+			mixWithSceneLightingColor: 0.65,
 		},
 		artMeshMatcher: {
 			tintAll: false,
@@ -60,6 +61,7 @@ export const tintClear = (plugin: Ref<Plugin | undefined>) => () =>
 			colorG: 255,
 			colorB: 255,
 			colorA: 255,
+			mixWithSceneLightingColor: 0,
 		},
 		artMeshMatcher: {
 			tintAll: true,
