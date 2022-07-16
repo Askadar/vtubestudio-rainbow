@@ -1,9 +1,12 @@
 import { Plugin } from 'vtubestudio'
+import { Ref } from 'vue'
 import colours from './colours'
 
-type Settings = {
+export interface Settings {
 	meshMatch: string
 	meshes: string[]
+	rate: number
+	jebMode: boolean
 }
 
 const getMeshesFromWildcard = (meshMatch?: string) => {
@@ -14,8 +17,8 @@ const getMeshesFromWildcard = (meshMatch?: string) => {
 	return meshMatch.split(',')
 }
 
-export const tintJeb = (plugin: Plugin, settings: Settings) => () =>
-	plugin.apiClient.colorTint({
+export const tintJeb = (plugin: Ref<Plugin | undefined>, settings: Settings) => () =>
+	plugin.value?.apiClient.colorTint({
 		colorTint: {
 			colorR: 255,
 			colorG: 255,
@@ -30,24 +33,28 @@ export const tintJeb = (plugin: Plugin, settings: Settings) => () =>
 		},
 	})
 
-export const tintCustom = (plugin: Plugin, settings: Settings) => (index: number) =>
-	plugin.apiClient.colorTint({
-		colorTint: {
-			colorR: colours[index % colours.length][0],
-			colorG: colours[index % colours.length][1],
-			colorB: colours[index % colours.length][2],
-			colorA: 255,
-			mixWithSceneLightingColor: 0.8,
-		},
-		artMeshMatcher: {
-			tintAll: false,
-			nameContains: getMeshesFromWildcard(settings.meshMatch),
-			nameExact: settings.meshes,
-		},
-	})
+export const tintCustom =
+	(plugin: Ref<Plugin | undefined>, settings: Settings) => (index: number) =>
+		plugin.value?.apiClient.colorTint({
+			colorTint: {
+				colorR:
+					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][0],
+				colorG:
+					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][1],
+				colorB:
+					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][2],
+				colorA: 255,
+				mixWithSceneLightingColor: 0.75,
+			},
+			artMeshMatcher: {
+				tintAll: false,
+				nameContains: getMeshesFromWildcard(settings.meshMatch),
+				nameExact: settings.meshes,
+			},
+		})
 
-export const tintClear = (plugin: Plugin, settings: Settings) => () =>
-	plugin.apiClient.colorTint({
+export const tintClear = (plugin: Ref<Plugin | undefined>) => () =>
+	plugin.value?.apiClient.colorTint({
 		colorTint: {
 			colorR: 255,
 			colorG: 255,

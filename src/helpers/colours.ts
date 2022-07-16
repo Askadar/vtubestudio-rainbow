@@ -41,7 +41,7 @@ const colours = {
 	),
 }
 
-const clampTint = (tintValue: number) => Math.min(Math.max(tintValue, 0), 255)
+const clampTint = (tintValue: number) => Math.min(Math.max(tintValue, 80), 255)
 
 const splineColours = (interpolationLevels = 10) => {
 	const indexExtended = Array((colours.index.length - 1) * interpolationLevels)

@@ -10,11 +10,13 @@
 	"license": "MIT",
 	"browserslist": "> 0.5%, last 2 versions, not dead",
 	"dependencies": {
+		"@ckpack/vue-color": "^1.2.0",
 		"cubic-spline": "^3.0.3",
 		"naive-ui": "^2.25.3",
 		"rxjs": "^7.5.4",
 		"vtubestudio": "^1.9.1",
-		"vue": "^3.2.31"
+		"vue": "^3.2.31",
+		"vuse-rx": "^0.13.1"
 	},
 	"devDependencies": {
 		"@parcel/transformer-vue": "2.3.2",
