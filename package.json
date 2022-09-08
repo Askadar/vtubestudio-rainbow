@@ -11,8 +11,9 @@
 	"browserslist": "> 0.5%, last 2 versions, not dead",
 	"dependencies": {
 		"@ckpack/vue-color": "^1.2.0",
+		"@vicons/carbon": "^0.12.0",
 		"cubic-spline": "^3.0.3",
-		"naive-ui": "^2.25.3",
+		"naive-ui": "^2.33",
 		"rxjs": "^7.5.4",
 		"vtubestudio": "^1.9.1",
 		"vue": "^3.2.31",
@@ -21,6 +22,8 @@
 	"devDependencies": {
 		"@parcel/transformer-vue": "2.3.2",
 		"parcel": "^2.3.2",
+		"prettier": "^2.7.1",
+		"browserslist": "^4.21.3",
 		"process": "^0.11.10",
 		"rimraf": "^3.0.2",
 		"typescript": "^4.5.5"

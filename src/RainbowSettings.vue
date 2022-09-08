@@ -6,7 +6,10 @@
 				placeholder="e.g. 'boob' will match meshes 'underboob', 'boob_left', 'chest_boob_right'"
 			/>
 		</n-form-item>
-		<n-form-item label="Or select individual mesh(es). Wildcard above takes precedence" path="meshes">
+		<n-form-item
+			label="Or select individual mesh(es). Wildcard above takes precedence"
+			path="meshes"
+		>
 			<n-select
 				placeholder="Just start typing to filter the list"
 				v-model:value="settings.meshes"
@@ -17,11 +20,24 @@
 				clearable
 			/>
 		</n-form-item>
-		<n-form-item path="jebMode">
+		<n-form-item label="Automatically disable cycler after this time if set." path="timeoutAfter">
 			<n-space vertical>
-				<n-checkbox v-model:checked="settings.jebMode">
-					Whether to use simple rainbow cycle provided by VTube Studio.
-				</n-checkbox>
+				<n-space horizontal>
+					<n-time-picker v-model:value="settings.timeoutAfter" timeZone="UTC" />
+					<n-button quaternary type="error" title="Disable timeout" @click="settings.timeoutAfter = 0">
+						<template #icon>
+							<n-icon><close /></n-icon>
+						</template>
+					</n-button>
+				</n-space>
+			</n-space>
+		</n-form-item>
+		<n-form-item
+			label="Whether to use simple rainbow cycle provided by VTube Studio."
+			path="jebMode"
+		>
+			<n-space vertical>
+				<n-checkbox v-model:checked="settings.jebMode">Using built-in cycle</n-checkbox>
 				<p v-if="settings.jebMode">
 					It should be faster, but lacks all the extra settings (just one atm 😏) of custom mode.
 				</p>
@@ -50,7 +66,10 @@ import {
 	NInputNumber,
 	NSlider,
 	NCheckbox,
+	NTimePicker,
+	NIcon,
 } from 'naive-ui'
+import { Close } from '@vicons/carbon'
 import { get, set, Settings } from './helpers'
 
 export default defineComponent({
@@ -61,11 +80,12 @@ export default defineComponent({
 		},
 	},
 	setup(_, ctx) {
-		const settings = reactive({
+		const settings = reactive<Settings>({
 			meshMatch: '',
 			meshes: [] as string[],
 			rate: 2.5,
 			jebMode: false,
+			timeoutAfter: 0,
 		})
 		watch(settings, (newSettings) => ctx.emit('settings-change', newSettings))
 
@@ -89,6 +109,9 @@ export default defineComponent({
 		NSelect,
 		NSlider,
 		NCheckbox,
+		NTimePicker,
+		NIcon,
+		Close,
 	},
 })
 </script>

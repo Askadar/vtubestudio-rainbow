@@ -7,6 +7,7 @@ export interface Settings {
 	meshes: string[]
 	rate: number
 	jebMode: boolean
+	timeoutAfter: number
 }
 
 const getMeshesFromWildcard = (meshMatch?: string) => {

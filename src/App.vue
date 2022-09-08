@@ -29,6 +29,7 @@ import {
 	map,
 	switchMap,
 	shareReplay,
+	concatMap,
 } from 'rxjs/operators'
 import { refFrom } from 'vuse-rx'
 
@@ -69,7 +70,13 @@ export default defineComponent({
 			)
 		)
 
-		const settings: Settings = reactive({ meshMatch: '', meshes: [], rate: 2.5, jebMode: false })
+		const settings: Settings = reactive({
+			meshMatch: '',
+			meshes: [],
+			rate: 2.5,
+			jebMode: false,
+			timeoutAfter: 0,
+		})
 		const onSettingsUpdate = (newSettings: Settings) => {
 			const tickerWasEnabled = tickerState.value
 			Object.assign(settings, newSettings)
@@ -96,6 +103,13 @@ export default defineComponent({
 
 		$ticker.pipe(filter(() => !settings.jebMode)).subscribe(tintCustom(plugin, settings))
 		$enabled.pipe(filter(() => settings.jebMode)).subscribe(tintJeb(plugin, settings))
+		$enabled
+			.pipe(
+				filter(() => settings.timeoutAfter > 1e3),
+				concatMap(() => timer(settings.timeoutAfter).pipe(takeUntil($disabled))),
+				filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value)
+			)
+			.subscribe(() => $tickerState.next(false))
 		$cleared.subscribe(tintClear(plugin))
 
 		const toggleState = async () => {
