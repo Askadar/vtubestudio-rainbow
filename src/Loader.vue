@@ -35,18 +35,18 @@ export default defineComponent({
 		const loading = refFrom(
 			$ready.pipe(
 				map(() => false),
-				take(1)
+				take(1),
 			),
-			true
+			true,
 		)
 		const failed = refFrom<string | boolean>(
 			$failed.pipe(
 				map(
 					() =>
-						`Couldn't connect to VTube Studio, make sure it's running and plugin server is enabled. If you changed default port for some reason, contact this plugin developer.`
-				)
+						`Couldn't connect to VTube Studio, make sure it's running and plugin server is enabled. If you changed default port for some reason, contact this plugin developer.`,
+				),
 			),
-			false
+			false,
 		)
 
 		return { loading, failed }

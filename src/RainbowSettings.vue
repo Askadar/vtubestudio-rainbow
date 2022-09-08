@@ -24,7 +24,12 @@
 			<n-space vertical>
 				<n-space horizontal>
 					<n-time-picker v-model:value="settings.timeoutAfter" timeZone="UTC" />
-					<n-button quaternary type="error" title="Disable timeout" @click="settings.timeoutAfter = 0">
+					<n-button
+						quaternary
+						type="error"
+						title="Disable timeout"
+						@click="settings.timeoutAfter = 0"
+					>
 						<template #icon>
 							<n-icon><close /></n-icon>
 						</template>

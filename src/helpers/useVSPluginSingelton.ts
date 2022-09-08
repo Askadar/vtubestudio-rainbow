@@ -43,7 +43,7 @@ export const useVSPluginSingelton = () => {
 					'ZN Development',
 					undefined,
 					loadKey(),
-					saveKey
+					saveKey,
 				)
 
 				$loadState.next(true)

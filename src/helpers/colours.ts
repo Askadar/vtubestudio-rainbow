@@ -37,7 +37,7 @@ const colours = {
 			blue.push(b)
 			return { red, green, blue }
 		},
-		{ red: [] as number[], green: [] as number[], blue: [] as number[] }
+		{ red: [] as number[], green: [] as number[], blue: [] as number[] },
 	),
 }
 

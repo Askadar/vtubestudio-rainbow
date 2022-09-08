@@ -46,7 +46,7 @@ export default defineComponent({
 			mergeMap(() => plugin.value?.apiClient.artMeshList() || []),
 			map(({ artMeshNames }) => artMeshNames),
 			shareReplay(1),
-			tap((meshes) => set('meshes', meshes))
+			tap((meshes) => set('meshes', meshes)),
 		)
 
 		const $tickerState = new BehaviorSubject<boolean | undefined>(undefined)
@@ -65,9 +65,9 @@ export default defineComponent({
 				// TODO check rxjs performance when handling observable of 36000 items (60 updates/s for 60s/min for 10 min)
 				timer(0, 10 * 60 * 1e3).pipe(
 					takeUntil($disabled),
-					switchMap(() => interval(Math.floor(1e3 / 60)).pipe(takeUntil($disabled)))
-				)
-			)
+					switchMap(() => interval(Math.floor(1e3 / 60)).pipe(takeUntil($disabled))),
+				),
+			),
 		)
 
 		const settings: Settings = reactive({
@@ -94,11 +94,11 @@ export default defineComponent({
 				switchMap((meshes) =>
 					from(meshes).pipe(
 						map((mesh) => ({ label: mesh, value: mesh })),
-						toArray()
-					)
-				)
+						toArray(),
+					),
+				),
 			),
-			[]
+			[],
 		)
 
 		$ticker.pipe(filter(() => !settings.jebMode)).subscribe(tintCustom(plugin, settings))
@@ -107,7 +107,7 @@ export default defineComponent({
 			.pipe(
 				filter(() => settings.timeoutAfter > 1e3),
 				concatMap(() => timer(settings.timeoutAfter).pipe(takeUntil($disabled))),
-				filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value)
+				filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value),
 			)
 			.subscribe(() => $tickerState.next(false))
 		$cleared.subscribe(tintClear(plugin))
