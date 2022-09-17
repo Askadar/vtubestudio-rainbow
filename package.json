@@ -2,8 +2,8 @@
 	"name": "vtubestudio-rainbow",
 	"description": "Allows to rainbow cycle any ArtMesh(es) in VTube Studio",
 	"scripts": {
-		"dev": "parcel serve",
-		"build": "rimraf pages .parcel-cache && parcel build --dist-dir pages --no-source-maps --public-url ./"
+		"dev": "vite",
+		"build": "vue-tsc --noEmit && vite build"
 	},
 	"version": "1.0.0",
 	"source": "src/index.html",
@@ -25,11 +25,14 @@
 		"@parcel/transformer-vue": "2.3.2",
 		"@parcel/transformer-webmanifest": "2.3.2",
 		"@parcel/transformer-xml": "2.3.2",
+		"@vitejs/plugin-vue": "^3.1.0",
 		"browserslist": "^4.21.3",
 		"parcel": "^2.3.2",
 		"prettier": "^2.7.1",
 		"process": "^0.11.10",
 		"rimraf": "^3.0.2",
-		"typescript": "^4.5.5"
+		"typescript": "^4.8.3",
+		"vite": "^3.1.0",
+		"vue-tsc": "^0.40.13"
 	}
 }
