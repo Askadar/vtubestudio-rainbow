@@ -1,6 +1,8 @@
+import { Color } from 'chroma-js'
 import { Plugin } from 'vtubestudio'
 import { Ref } from 'vue'
-import colours from './colours'
+// @ts-ignore
+import { LinearGradient } from 'vue-gpickr'
 
 export interface Settings {
 	meshMatch: string
@@ -8,6 +10,29 @@ export interface Settings {
 	rate: number
 	jebMode: boolean
 	timeoutAfter: number
+	gradient: LinearGradient
+	tintSaturation: number
+}
+
+export const defaultSettings: Settings = {
+	meshMatch: '',
+	meshes: [],
+	rate: 2.5,
+	jebMode: false,
+	timeoutAfter: 0,
+	tintSaturation: 80,
+	gradient: new LinearGradient({
+		angle: 90,
+		stops: [
+			['#FF0000BF', 0],
+			['#FF9200BF', 0.16],
+			['#FFDB00BF', 0.33],
+			['#64FF00BF', 0.49],
+			['#00FFD1BF', 0.66],
+			['#0000FFBF', 0.82],
+			['#C800FFBF', 1],
+		],
+	}),
 }
 
 const getMeshesFromWildcard = (meshMatch?: string) => {
@@ -36,17 +61,15 @@ export const tintJeb = (plugin: Ref<Plugin | undefined>, settings: Settings) => 
 	})
 
 export const tintCustom =
-	(plugin: Ref<Plugin | undefined>, settings: Settings) => (index: number) =>
+	(plugin: Ref<Plugin | undefined>, settings: Settings, colours: Ref<Color[]>) => (index: number) =>
 		plugin.value?.apiClient.colorTint({
 			colorTint: {
-				colorR:
-					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][0],
-				colorG:
-					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][1],
-				colorB:
-					colours[Math.floor(index * settings.rate * (colours.length / 118)) % colours.length][2],
+				colorR: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[0],
+				colorG: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[1],
+				colorB: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[2],
 				colorA: 255,
-				mixWithSceneLightingColor: 0.75,
+				mixWithSceneLightingColor:
+					colours.value[Math.floor(index * settings.rate) % colours.value.length].rgba()[3],
 			},
 			artMeshMatcher: {
 				tintAll: false,

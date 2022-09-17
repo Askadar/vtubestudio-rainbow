@@ -1,5 +1,5 @@
 export { get, set } from './storage'
-export { tintClear, tintCustom, tintJeb } from './vtube'
+export { tintClear, tintCustom, tintJeb, defaultSettings } from './vtube'
 export { log } from './logging'
 export { useVSPluginSingelton } from './useVSPluginSingelton'
 
