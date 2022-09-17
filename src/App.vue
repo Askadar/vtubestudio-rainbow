@@ -13,6 +13,7 @@
 		<a style="position: fixed; bottom: 0px; padding: 8px" target="_useless-help" :href="supportUrl">
 			Look for help here.
 		</a>
+		<news />
 	</n-layout>
 </template>
 
@@ -44,6 +45,7 @@ import {
 } from './helpers'
 
 import Loader from './Loader.vue'
+import News from './News.vue'
 import RainbowSettings from './RainbowSettings.vue'
 import { Color, scale } from 'chroma-js'
 
@@ -86,7 +88,6 @@ export default defineComponent({
 
 			return stopScale.colors(rpm * 5, 'rgba')
 		})
-		console.log(colours)
 
 		const $ticker = $enabled.pipe(
 			switchMap(() =>
@@ -159,8 +160,10 @@ export default defineComponent({
 		NLayout,
 		NLayoutContent,
 		NButton,
+
 		Loader,
 		RainbowSettings,
+		News,
 	},
 })
 </script>
