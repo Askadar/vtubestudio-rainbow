@@ -37,7 +37,6 @@
 
 <script lang="ts">
 import { defineComponent, reactive, ref, computed } from 'vue'
-import { NSpace, NGradientText, NModal, NCard, NButton } from 'naive-ui'
 import { get, set } from './helpers'
 
 interface Updates {
@@ -68,7 +67,10 @@ const news: NewsEntry[] = [
 		],
 		links: [
 			{ label: 'Twatter, go get it, son', href: 'https://twitter.com/ZN_Development' },
-			{ label: `Child support group (you're the child)`, href: process.env.SUPPORT_URL as string },
+			{
+				label: `Child support group (you're the child)`,
+				href: import.meta.env.VITE_SUPPORT_URL as string,
+			},
 		],
 	},
 ]
@@ -102,6 +104,5 @@ export default defineComponent({
 
 		return { updatesInfo, news, currentNews, modalShown, nextPage, skipForNow, dontBother }
 	},
-	components: { NSpace, NGradientText, NModal, NCard, NButton },
 })
 </script>

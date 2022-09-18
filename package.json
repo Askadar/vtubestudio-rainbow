@@ -3,7 +3,8 @@
 	"description": "Allows to rainbow cycle any ArtMesh(es) in VTube Studio",
 	"scripts": {
 		"dev": "vite",
-		"build": "vue-tsc --noEmit && vite build"
+		"build": "vue-tsc --noEmit && vite build",
+		"serve": "yarn build && serve pages"
 	},
 	"version": "1.0.0",
 	"source": "src/index.html",
@@ -12,30 +13,25 @@
 	"dependencies": {
 		"@vicons/carbon": "^0.12.0",
 		"chroma-js": "^2.4.2",
-		"cubic-spline": "^3.0.3",
 		"naive-ui": "^2.33",
 		"rxjs": "^7.5.4",
-		"stylus": "^0.59.0",
 		"vtubestudio": "^1.9.1",
 		"vue": "^3.2.37",
-		"vue-gpickr": "^1.0.0",
-		"vuse-rx": "^0.13.1"
+		"vue-gradient-picker": "https://github.com/Askadar/vue-gradient-picker"
 	},
 	"devDependencies": {
-		"@parcel/packager-raw-url": "2.7.0",
-		"@parcel/packager-xml": "2.7.0",
-		"@parcel/transformer-vue": "2.7.0",
-		"@parcel/transformer-webmanifest": "2.7.0",
-		"@parcel/transformer-xml": "2.7.0",
 		"@types/chroma-js": "^2.1.4",
+		"@types/rollup-plugin-visualizer": "^4.2.1",
 		"@vitejs/plugin-vue": "^3.1.0",
 		"browserslist": "^4.21.3",
-		"parcel": "^2.3.2",
 		"prettier": "^2.7.1",
-		"process": "^0.11.10",
-		"rimraf": "^3.0.2",
+		"rollup-plugin-analyzer": "^4.0.0",
+		"rollup-plugin-visualizer": "^5.8.1",
 		"serve": "^14.0.1",
+		"stylus": "^0.59.0",
 		"typescript": "^4.8.3",
+		"unplugin-auto-import": "^0.11.2",
+		"unplugin-vue-components": "^0.22.7",
 		"vite": "^3.1.0",
 		"vue-tsc": "^0.40.13"
 	}

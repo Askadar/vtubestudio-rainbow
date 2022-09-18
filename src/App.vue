@@ -19,7 +19,6 @@
 
 <script lang="ts">
 import { computed, ComputedRef, defineComponent, onUnmounted, reactive } from 'vue'
-import { NSpace, NLayout, NLayoutContent, NButton } from 'naive-ui'
 import { BehaviorSubject, from, interval, merge, timer } from 'rxjs'
 import {
 	mergeMap,
@@ -32,7 +31,6 @@ import {
 	shareReplay,
 	concatMap,
 } from 'rxjs/operators'
-import { refFrom } from 'vuse-rx'
 
 import {
 	set,
@@ -42,6 +40,7 @@ import {
 	useVSPluginSingelton,
 	Settings,
 	defaultSettings,
+	useObservable,
 } from './helpers'
 
 import Loader from './Loader.vue'
@@ -69,7 +68,7 @@ export default defineComponent({
 		const $enabled = $tickerState.pipe(filter(Boolean))
 		const $disabled = $tickerState.pipe(filter((state) => state === false))
 		const $cleared = merge($disabled, $forceClear)
-		const tickerState = refFrom($tickerState)
+		const tickerState = useObservable($tickerState)
 
 		const rpm = 30
 
@@ -80,9 +79,9 @@ export default defineComponent({
 		)
 		const colours = computed(() => {
 			const loopedStops = sortedStops.value.concat([sortedStops.value[0]])
-			const stopColours = loopedStops.map(([colour]: [string]) => colour)
+			const stopColours = loopedStops.map(([colour]) => colour)
 			const stopDomains = loopedStops.map((_, i) => i)
-			const stopScale = scale(stopColours)
+			const stopScale = scale(stopColours as string[])
 				.domain(stopDomains)
 				.padding(1 / loopedStops.length / 2)
 
@@ -99,7 +98,7 @@ export default defineComponent({
 			),
 		)
 
-		const settings: Settings = reactive({ ...defaultSettings })
+		const settings: Settings = reactive({ ...defaultSettings }) as Settings
 		const onSettingsUpdate = (newSettings: Settings) => {
 			const tickerWasEnabled = tickerState.value
 			Object.assign(settings, newSettings)
@@ -111,8 +110,8 @@ export default defineComponent({
 			}
 		}
 
-		const meshesList = refFrom($meshesList, [])
-		const meshOptions = refFrom(
+		const meshesList = useObservable($meshesList, [])
+		const meshOptions = useObservable(
 			$meshesList.pipe(
 				switchMap((meshes) =>
 					from(meshes).pipe(
@@ -141,7 +140,7 @@ export default defineComponent({
 			$tickerState.next(!tickerState.value)
 		}
 
-		const supportUrl = process.env.SUPPORT_URL
+		const supportUrl = import.meta.env.VITE_SUPPORT_URL
 		return {
 			supportUrl,
 
@@ -155,15 +154,6 @@ export default defineComponent({
 			toggleState,
 		}
 	},
-	components: {
-		NSpace,
-		NLayout,
-		NLayoutContent,
-		NButton,
-
-		Loader,
-		RainbowSettings,
-		News,
-	},
+	components: { Loader, RainbowSettings, News },
 })
 </script>
