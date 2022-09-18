@@ -13,11 +13,12 @@
 		<a style="position: fixed; bottom: 0px; padding: 8px" target="_useless-help" :href="supportUrl">
 			Look for help here.
 		</a>
+		<news />
 	</n-layout>
 </template>
 
 <script lang="ts">
-import { defineComponent, onUnmounted, reactive } from 'vue'
+import { computed, ComputedRef, defineComponent, onUnmounted, reactive } from 'vue'
 import { NSpace, NLayout, NLayoutContent, NButton } from 'naive-ui'
 import { BehaviorSubject, from, interval, merge, timer } from 'rxjs'
 import {
@@ -33,10 +34,20 @@ import {
 } from 'rxjs/operators'
 import { refFrom } from 'vuse-rx'
 
-import { set, tintClear, tintCustom, tintJeb, useVSPluginSingelton, Settings } from './helpers'
+import {
+	set,
+	tintClear,
+	tintCustom,
+	tintJeb,
+	useVSPluginSingelton,
+	Settings,
+	defaultSettings,
+} from './helpers'
 
 import Loader from './Loader.vue'
+import News from './News.vue'
 import RainbowSettings from './RainbowSettings.vue'
+import { Color, scale } from 'chroma-js'
 
 export default defineComponent({
 	setup() {
@@ -60,23 +71,35 @@ export default defineComponent({
 		const $cleared = merge($disabled, $forceClear)
 		const tickerState = refFrom($tickerState)
 
+		const rpm = 30
+
+		const sortedStops = computed(() =>
+			[...settings.gradient.stops].sort(
+				([_a, offsetA]: any, [_b, offsetB]: any) => offsetA - offsetB,
+			),
+		)
+		const colours = computed(() => {
+			const loopedStops = sortedStops.value.concat([sortedStops.value[0]])
+			const stopColours = loopedStops.map(([colour]: [string]) => colour)
+			const stopDomains = loopedStops.map((_, i) => i)
+			const stopScale = scale(stopColours)
+				.domain(stopDomains)
+				.padding(1 / loopedStops.length / 2)
+
+			return stopScale.colors(rpm * 5, 'rgba')
+		})
+
 		const $ticker = $enabled.pipe(
 			switchMap(() =>
 				// TODO check rxjs performance when handling observable of 36000 items (60 updates/s for 60s/min for 10 min)
 				timer(0, 10 * 60 * 1e3).pipe(
 					takeUntil($disabled),
-					switchMap(() => interval(Math.floor(1e3 / 60)).pipe(takeUntil($disabled))),
+					switchMap(() => interval(Math.floor(1e3 / rpm)).pipe(takeUntil($disabled))),
 				),
 			),
 		)
 
-		const settings: Settings = reactive({
-			meshMatch: '',
-			meshes: [],
-			rate: 2.5,
-			jebMode: false,
-			timeoutAfter: 0,
-		})
+		const settings: Settings = reactive({ ...defaultSettings })
 		const onSettingsUpdate = (newSettings: Settings) => {
 			const tickerWasEnabled = tickerState.value
 			Object.assign(settings, newSettings)
@@ -101,7 +124,9 @@ export default defineComponent({
 			[],
 		)
 
-		$ticker.pipe(filter(() => !settings.jebMode)).subscribe(tintCustom(plugin, settings))
+		$ticker
+			.pipe(filter(() => !settings.jebMode))
+			.subscribe(tintCustom(plugin, settings, colours as unknown as ComputedRef<Color[]>))
 		$enabled.pipe(filter(() => settings.jebMode)).subscribe(tintJeb(plugin, settings))
 		$enabled
 			.pipe(
@@ -135,8 +160,10 @@ export default defineComponent({
 		NLayout,
 		NLayoutContent,
 		NButton,
+
 		Loader,
 		RainbowSettings,
+		News,
 	},
 })
 </script>
