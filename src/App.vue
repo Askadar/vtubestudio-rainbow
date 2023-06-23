@@ -4,7 +4,7 @@
 			<n-space>
 				<n-form>
 					<n-form-item label="Touch the link do it">
-						<a target="_twitch-oauth" :href="twitchOauthUrl">
+						<a :href="twitchOauthUrl">
 							Sell your soul to corporate tracking.
 						</a>
 					</n-form-item>
@@ -20,14 +20,14 @@
 					</n-form-item>
 				</n-form>
 			</n-space>
-			<loader>
+			<!-- <loader>
 				<n-space vertical>
 					<rainbow-settings @settings-change="onSettingsUpdate" :mesh-options="meshOptions" />
 					<n-button @click="toggleState" type="primary">{{
 						!tickerState ? 'Enable' : 'Disable'
 					}}</n-button>
 				</n-space>
-			</loader>
+			</loader> -->
 		</n-layout-content>
 		<a
 			v-if="supportUrl"
@@ -37,12 +37,12 @@
 		>
 			Look for help here.
 		</a>
-		<news />
+		<!-- <news /> -->
 	</n-layout>
 </template>
 
 <script lang="ts">
-import { computed, ComputedRef, defineComponent, onUnmounted, reactive } from 'vue'
+import { computed, ComputedRef, defineComponent, onUnmounted, reactive, ref } from 'vue'
 import { BehaviorSubject, from, interval, merge, timer } from 'rxjs'
 import {
 	mergeMap,
@@ -185,14 +185,14 @@ export default defineComponent({
 			: undefined
 		log('auth code', { authCode, hashl: document.location.hash.length })
 
-		let redeems = Promise.resolve([] as Array<{ label: string; value: string }[]>)
+		let redeems = ref([] as Array<{ label: string; value: string }[]>)
 		if (authCode) {
 			const headers = new Headers([
 				['Client-Id', import.meta.env.VITE_TWITCH_CLIENT_ID],
 				['Authorization', `Bearer ${authCode}`],
 			])
 
-			redeems = fetch('https://api.twitch.tv/helix/users', { headers })
+			fetch('https://api.twitch.tv/helix/users', { headers })
 				.then(async (resp) => {
 					if (resp.status >= 400) throw new Error(await resp.text())
 					return resp.json()
@@ -210,10 +210,13 @@ export default defineComponent({
 						})
 						.catch((err) => alert(`Oopsie-daisy, we got an error: ${err}`)),
 				)
-				.then((rewards) =>
-					rewards?.data?.map((reward: any) => ({ label: reward.title, value: reward.id })),
-				)
-				.catch((err) => [])
+				.then((rewards) => {
+					redeems.value =
+						rewards?.data?.map((reward: any) => ({
+							label: reward.title,
+							value: reward.id,
+						})) ?? []
+				})
 		}
 
 		return {
