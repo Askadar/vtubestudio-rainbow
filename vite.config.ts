@@ -7,6 +7,7 @@ import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import browserslistToEsbuild from 'browserslist-to-esbuild'
 
 export default defineConfig({
+	base: '',
 	plugins: [
 		vue(),
 		AutoImport({
