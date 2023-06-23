@@ -24,6 +24,7 @@
 		"@types/chroma-js": "^2.1.4",
 		"@types/rollup-plugin-visualizer": "^4.2.1",
 		"@vitejs/plugin-vue": "^3.1.0",
+		"browserslist-to-esbuild": "^1.2.0",
 		"browserslist": "^4.21.3",
 		"prettier": "^2.7.1",
 		"rollup-plugin-analyzer": "^4.0.0",
