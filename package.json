@@ -11,6 +11,7 @@
 	"license": "MIT",
 	"browserslist": "> 0.5%, last 2 versions, not dead",
 	"dependencies": {
+		"@ckpack/vue-color": "^1.5.0",
 		"@vicons/carbon": "^0.12.0",
 		"chroma-js": "^2.4.2",
 		"naive-ui": "^2.33",

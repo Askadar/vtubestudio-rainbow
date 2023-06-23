@@ -4,3 +4,4 @@ dist
 *.db.sqlite*
 .env
 stats.html
+yarn-error.log
