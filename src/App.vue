@@ -1,6 +1,25 @@
 <template>
 	<n-layout>
 		<n-layout-content content-style="padding: 24px">
+			<n-space>
+				<n-form>
+					<n-form-item label="Touch the link do it">
+						<a target="_twitch-oauth" :href="twitchOauthUrl">
+							Sell your soul to corporate tracking.
+						</a>
+					</n-form-item>
+					<n-form-item label="Your rewards hopefully">
+						<n-select
+							placeholder="Just start typing to filter the list"
+							:options="redeems"
+							multiple
+							filterable
+							:clear-filter-after-select="false"
+							clearable
+						/>
+					</n-form-item>
+				</n-form>
+			</n-space>
 			<loader>
 				<n-space vertical>
 					<rainbow-settings @settings-change="onSettingsUpdate" :mesh-options="meshOptions" />
@@ -10,7 +29,12 @@
 				</n-space>
 			</loader>
 		</n-layout-content>
-		<a style="position: fixed; bottom: 0px; padding: 8px" target="_useless-help" :href="supportUrl">
+		<a
+			v-if="supportUrl"
+			style="position: fixed; bottom: 0px; padding: 8px"
+			target="_useless-help"
+			:href="supportUrl"
+		>
 			Look for help here.
 		</a>
 		<news />
@@ -34,6 +58,7 @@ import {
 
 import {
 	set,
+	setSession,
 	tintClear,
 	tintCustom,
 	tintJeb,
@@ -41,6 +66,7 @@ import {
 	Settings,
 	defaultSettings,
 	useObservable,
+	log,
 } from './helpers'
 
 import Loader from './Loader.vue'
@@ -141,8 +167,60 @@ export default defineComponent({
 		}
 
 		const supportUrl = import.meta.env.VITE_SUPPORT_URL
+
+		// Using implicit grant flow https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#implicit-grant-flow
+		const state = Math.round(Math.random() * Math.random() * 1e9).toString()
+		setSession('twitch_oauth_state', state)
+		let twitchOauthUrl = new URL('https://id.twitch.tv/oauth2/authorize')
+		twitchOauthUrl.searchParams.set('client_id', import.meta.env.VITE_TWITCH_CLIENT_ID)
+		twitchOauthUrl.searchParams.set('redirect_uri', import.meta.env.VITE_TWITCH_REDIRECT_URI)
+		twitchOauthUrl.searchParams.set('response_type', 'token')
+		twitchOauthUrl.searchParams.set('scope', ['channel:read:redemptions'].join(' '))
+		twitchOauthUrl.searchParams.set('state', state)
+
+		log('setup refresh test', { state })
+
+		const authCode = document.location.hash.length
+			? new URL(document.location.toString().replace('#', '?')).searchParams.get('access_token')
+			: undefined
+		log('auth code', { authCode, hashl: document.location.hash.length })
+
+		let redeems = Promise.resolve([] as Array<{ label: string; value: string }[]>)
+		if (authCode) {
+			const headers = new Headers([
+				['Client-Id', import.meta.env.VITE_TWITCH_CLIENT_ID],
+				['Authorization', `Bearer ${authCode}`],
+			])
+
+			redeems = fetch('https://api.twitch.tv/helix/users', { headers })
+				.then(async (resp) => {
+					if (resp.status >= 400) throw new Error(await resp.text())
+					return resp.json()
+				})
+				.then((users) =>
+					fetch(
+						`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${users.data[0].id}`,
+						{
+							headers,
+						},
+					)
+						.then(async (resp) => {
+							if (resp.status >= 400) throw new Error(await resp.text())
+							return resp.json()
+						})
+						.catch((err) => alert(`Oopsie-daisy, we got an error: ${err}`)),
+				)
+				.then((rewards) =>
+					rewards?.data?.map((reward: any) => ({ label: reward.title, value: reward.id })),
+				)
+				.catch((err) => [])
+		}
+
 		return {
 			supportUrl,
+			twitchOauthUrl: twitchOauthUrl.toString(),
+
+			redeems,
 
 			settings,
 			onSettingsUpdate,
