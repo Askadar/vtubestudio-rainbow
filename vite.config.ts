@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
+import browserslistToEsbuild from 'browserslist-to-esbuild'
 
 export default defineConfig({
 	plugins: [
@@ -25,7 +26,8 @@ export default defineConfig({
 	},
 	publicDir: './public',
 	build: {
-		outDir: './pages',
+		outDir: './dist',
+		target: browserslistToEsbuild(),
 		rollupOptions: {
 			// output: {
 			// 	manualChunks: {
