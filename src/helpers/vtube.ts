@@ -11,6 +11,7 @@ export interface Settings {
 	timeoutAfter: number
 	gradient: LinearGradient
 	tintSaturation: number
+	redeem: string
 }
 
 export const defaultSettings: Settings = {
@@ -20,6 +21,7 @@ export const defaultSettings: Settings = {
 	jebMode: false,
 	timeoutAfter: 0,
 	tintSaturation: 80,
+	redeem: '',
 	gradient: new LinearGradient({
 		angle: 90,
 		stops: [
@@ -63,9 +65,15 @@ export const tintCustom =
 	(plugin: Ref<Plugin | undefined>, settings: Settings, colours: Ref<Color[]>) => (index: number) =>
 		plugin.value?.apiClient.colorTint({
 			colorTint: {
-				colorR: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[0],
-				colorG: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[1],
-				colorB: colours.value[Math.floor(index * settings.rate)%colours.value.length].brighten(100 / (settings.tintSaturation * 1.5)).rgba()[2],
+				colorR: colours.value[Math.floor(index * settings.rate) % colours.value.length]
+					.brighten(100 / (settings.tintSaturation * 1.5))
+					.rgba()[0],
+				colorG: colours.value[Math.floor(index * settings.rate) % colours.value.length]
+					.brighten(100 / (settings.tintSaturation * 1.5))
+					.rgba()[1],
+				colorB: colours.value[Math.floor(index * settings.rate) % colours.value.length]
+					.brighten(100 / (settings.tintSaturation * 1.5))
+					.rgba()[2],
 				colorA: 255,
 				mixWithSceneLightingColor:
 					colours.value[Math.floor(index * settings.rate) % colours.value.length].rgba()[3],
@@ -90,3 +98,6 @@ export const tintClear = (plugin: Ref<Plugin | undefined>) => () =>
 			tintAll: true,
 		},
 	})
+
+export const getArtMeshes = (plugin: Ref<Plugin | undefined>) =>
+	plugin.value?.apiClient.artMeshList().then(({ artMeshNames }) => artMeshNames)

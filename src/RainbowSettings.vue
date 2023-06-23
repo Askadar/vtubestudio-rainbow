@@ -1,5 +1,18 @@
 <template>
-	<n-form v-model="settings">
+	<n-form v-model="settings" :label-width="69">
+		<n-form-item label="Touch the link do it">
+			<a :href="twitchOauthUrl"> Sell your soul to corporate tracking. </a>
+		</n-form-item>
+		<n-form-item label="Your rewards hopefully">
+			<n-select
+				placeholder="Select redeem to start colour cycle. You can start typing to filter the list"
+				v-model:value="settings.redeem"
+				:options="redeems"
+				:clear-filter-after-select="false"
+				filterable
+				clearable
+			/>
+		</n-form-item>
 		<n-form-item label="Enter wildcard of mesh(es) you want to animate" path="meshMatch">
 			<n-input
 				v-model:value="settings.meshMatch"
@@ -11,12 +24,12 @@
 			path="meshes"
 		>
 			<n-select
-				placeholder="Just start typing to filter the list"
+				placeholder="You can start typing to filter the list"
 				v-model:value="settings.meshes"
 				:options="meshOptions"
+				:clear-filter-after-select="false"
 				multiple
 				filterable
-				:clear-filter-after-select="false"
 				clearable
 			/>
 		</n-form-item>
@@ -84,11 +97,15 @@ import { defineComponent, onMounted, PropType, reactive, watch } from 'vue'
 import { Close } from '@vicons/carbon'
 import { GradientPicker, LinearGradient } from 'vue-gradient-picker'
 import 'vue-gradient-picker/dist/style.css'
-import { get, set, Settings, defaultSettings } from './helpers'
+import { get, set, Settings, defaultSettings, useTwitchIGFAuthData } from './helpers'
 
 export default defineComponent({
 	props: {
 		meshOptions: {
+			type: Array as PropType<{ label: string; value: string }[]>,
+			default: () => [] as { label: string; value: string }[],
+		},
+		redeems: {
 			type: Array as PropType<{ label: string; value: string }[]>,
 			default: () => [] as { label: string; value: string }[],
 		},
@@ -110,8 +127,9 @@ export default defineComponent({
 		})
 
 		const saveSettings = () => set('settings', settings)
+		const { twitchOauthUrl } = useTwitchIGFAuthData()
 
-		return { settings, saveSettings }
+		return { settings, saveSettings, twitchOauthUrl }
 	},
 	components: {
 		Close,

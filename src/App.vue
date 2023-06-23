@@ -1,33 +1,18 @@
 <template>
 	<n-layout>
 		<n-layout-content content-style="padding: 24px">
-			<n-space>
-				<n-form>
-					<n-form-item label="Touch the link do it">
-						<a :href="twitchOauthUrl">
-							Sell your soul to corporate tracking.
-						</a>
-					</n-form-item>
-					<n-form-item label="Your rewards hopefully">
-						<n-select
-							placeholder="Just start typing to filter the list"
-							:options="redeems"
-							multiple
-							filterable
-							:clear-filter-after-select="false"
-							clearable
-						/>
-					</n-form-item>
-				</n-form>
-			</n-space>
-			<!-- <loader>
+			<loader>
 				<n-space vertical>
-					<rainbow-settings @settings-change="onSettingsUpdate" :mesh-options="meshOptions" />
+					<rainbow-settings
+						@settings-change="onSettingsUpdate"
+						:mesh-options="meshOptions"
+						:redeems="redeems"
+					/>
 					<n-button @click="toggleState" type="primary">{{
 						!tickerState ? 'Enable' : 'Disable'
 					}}</n-button>
 				</n-space>
-			</loader> -->
+			</loader>
 		</n-layout-content>
 		<a
 			v-if="supportUrl"
@@ -37,13 +22,24 @@
 		>
 			Look for help here.
 		</a>
-		<!-- <news /> -->
+		<news />
 	</n-layout>
 </template>
 
 <script lang="ts">
 import { computed, ComputedRef, defineComponent, onUnmounted, reactive, ref } from 'vue'
-import { BehaviorSubject, from, interval, merge, timer } from 'rxjs'
+import {
+	BehaviorSubject,
+	from,
+	fromEvent,
+	interval,
+	merge,
+	Observable,
+	Subject,
+	Subscription,
+	timer,
+	zip,
+} from 'rxjs'
 import {
 	mergeMap,
 	tap,
@@ -54,11 +50,14 @@ import {
 	switchMap,
 	shareReplay,
 	concatMap,
+	skip,
+	withLatestFrom,
+	pairwise,
 } from 'rxjs/operators'
 
 import {
+	get,
 	set,
-	setSession,
 	tintClear,
 	tintCustom,
 	tintJeb,
@@ -66,7 +65,11 @@ import {
 	Settings,
 	defaultSettings,
 	useObservable,
-	log,
+	requestTwitch,
+	useTwitchIGFAuthData,
+	UsersResponse,
+	RedeemsResponse,
+	getArtMeshes,
 } from './helpers'
 
 import Loader from './Loader.vue'
@@ -78,9 +81,10 @@ export default defineComponent({
 	setup() {
 		const { plugin, $ready } = useVSPluginSingelton()
 
+		const subscriptions: Subscription[] = []
+
 		const $meshesList = $ready.pipe(
-			mergeMap(() => plugin.value?.apiClient.artMeshList() || []),
-			map(({ artMeshNames }) => artMeshNames),
+			mergeMap(() => getArtMeshes(plugin) || []),
 			shareReplay(1),
 			tap((meshes) => set('meshes', meshes)),
 		)
@@ -124,15 +128,27 @@ export default defineComponent({
 			),
 		)
 
+		const createWebsocket = () => new WebSocket('wss://eventsub.wss.twitch.tv/ws')
 		const settings: Settings = reactive({ ...defaultSettings }) as Settings
 		const onSettingsUpdate = (newSettings: Settings) => {
 			const tickerWasEnabled = tickerState.value
 			Object.assign(settings, newSettings)
+
 			if (newSettings.jebMode && tickerWasEnabled) {
 				$tickerState.next(false)
 				$tickerState.next(true)
 			} else {
 				$forceClear.next(1)
+			}
+
+			if (newSettings.redeem) {
+				if (newSettings.redeem !== $selectedRedeem.value) {
+					$selectedRedeem.next(newSettings.redeem)
+				}
+
+				if (!$eventSub.value) {
+					$eventSub.next(createWebsocket())
+				}
 			}
 		}
 
@@ -149,10 +165,15 @@ export default defineComponent({
 			[],
 		)
 
-		$ticker
-			.pipe(filter(() => !settings.jebMode))
-			.subscribe(tintCustom(plugin, settings, colours as unknown as ComputedRef<Color[]>))
-		$enabled.pipe(filter(() => settings.jebMode)).subscribe(tintJeb(plugin, settings))
+		subscriptions.push(
+			$ticker
+				.pipe(filter(() => !settings.jebMode))
+				.subscribe(tintCustom(plugin, settings, colours as unknown as ComputedRef<Color[]>)),
+		)
+		subscriptions.push(
+			$enabled.pipe(filter(() => settings.jebMode)).subscribe(tintJeb(plugin, settings)),
+		)
+
 		$enabled
 			.pipe(
 				filter(() => settings.timeoutAfter > 1e3),
@@ -160,7 +181,7 @@ export default defineComponent({
 				filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value),
 			)
 			.subscribe(() => $tickerState.next(false))
-		$cleared.subscribe(tintClear(plugin))
+		subscriptions.push($cleared.subscribe(tintClear(plugin)))
 
 		const toggleState = async () => {
 			$tickerState.next(!tickerState.value)
@@ -168,60 +189,130 @@ export default defineComponent({
 
 		const supportUrl = import.meta.env.VITE_SUPPORT_URL
 
-		// Using implicit grant flow https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#implicit-grant-flow
-		const state = Math.round(Math.random() * Math.random() * 1e9).toString()
-		setSession('twitch_oauth_state', state)
-		let twitchOauthUrl = new URL('https://id.twitch.tv/oauth2/authorize')
-		twitchOauthUrl.searchParams.set('client_id', import.meta.env.VITE_TWITCH_CLIENT_ID)
-		twitchOauthUrl.searchParams.set('redirect_uri', import.meta.env.VITE_TWITCH_REDIRECT_URI)
-		twitchOauthUrl.searchParams.set('response_type', 'token')
-		twitchOauthUrl.searchParams.set('scope', ['channel:read:redemptions'].join(' '))
-		twitchOauthUrl.searchParams.set('state', state)
+		// !TODO be mindful of refactoring new code below
+		const { authCode } = useTwitchIGFAuthData()
 
-		log('setup refresh test', { state })
+		const $selectedRedeem = new BehaviorSubject<null | string>(null)
+		const $currentUser = new BehaviorSubject<null | string>(get<string>('current_user'))
+		const $redeems = new BehaviorSubject([] as Array<{ label: string; value: string }>)
+		const $sessionId = new Subject<string>()
+		const $eventSub = new BehaviorSubject<WebSocket | null>(null)
+		const $keepalive = new Subject<number>()
+		const $keepaliveInterval = new Subject<Observable<number>>()
 
-		const authCode = document.location.hash.length
-			? new URL(document.location.toString().replace('#', '?')).searchParams.get('access_token')
-			: undefined
-		log('auth code', { authCode, hashl: document.location.hash.length })
+		// !TODO type message
+		const $notification = new Subject<any>()
 
-		let redeems = ref([] as Array<{ label: string; value: string }[]>)
-		if (authCode) {
-			const headers = new Headers([
-				['Client-Id', import.meta.env.VITE_TWITCH_CLIENT_ID],
-				['Authorization', `Bearer ${authCode}`],
-			])
-
-			fetch('https://api.twitch.tv/helix/users', { headers })
-				.then(async (resp) => {
-					if (resp.status >= 400) throw new Error(await resp.text())
-					return resp.json()
-				})
-				.then((users) =>
-					fetch(
-						`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${users.data[0].id}`,
-						{
-							headers,
-						},
-					)
-						.then(async (resp) => {
-							if (resp.status >= 400) throw new Error(await resp.text())
-							return resp.json()
-						})
-						.catch((err) => alert(`Oopsie-daisy, we got an error: ${err}`)),
+		subscriptions.push(
+			$currentUser
+				.pipe(
+					mergeMap((userId) =>
+						requestTwitch<RedeemsResponse>(
+							'GET',
+							`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${userId}`,
+						),
+					),
 				)
-				.then((rewards) => {
-					redeems.value =
-						rewards?.data?.map((reward: any) => ({
-							label: reward.title,
-							value: reward.id,
-						})) ?? []
+				.subscribe((redeems) => {
+					$redeems.next(redeems.data.map(({ id, title }) => ({ label: title, value: id })))
+				}),
+		)
+
+		/**
+		 * Prolly a bit too smart
+		 * Emits every keepalive timeout, grabs two last emits from $keepalive
+		 * and if they match (there was a skipped keepalive) recreates WebSocket
+		 * But this allows socket to be fully dependent
+		 */
+		subscriptions.push(
+			$keepaliveInterval
+				.pipe(
+					withLatestFrom($keepalive),
+					map(([_timerValue, keepAliveIndex]) => keepAliveIndex),
+					pairwise(),
+					filter((keepAliveIndice) => keepAliveIndice[0] === keepAliveIndice[1]),
+				)
+				.subscribe(() => $eventSub.next(createWebsocket())),
+		)
+
+		subscriptions.push(
+			$eventSub
+				.pipe(
+					filter(Boolean),
+					mergeMap((socket) => fromEvent<MessageEvent>(socket, 'message')),
+				)
+				.subscribe((message) => {
+					const data = JSON.parse(message.data)
+
+					switch (data.metadata.message_type) {
+						case 'session_welcome':
+							$sessionId.next(data.payload?.session?.id)
+							$keepaliveInterval.next(
+								interval(parseInt(data.payload?.session?.keepalive_timeout_seconds) * 1e3),
+							)
+							break
+						case 'session_keepalive':
+							$keepalive.next(Math.random())
+							break
+						case 'notification':
+							$notification.next(data.payload)
+							break
+						default:
+							break
+					}
+				}),
+		)
+
+		subscriptions.push(
+			$notification.subscribe((notification) => {
+				switch (notification.subscription.type) {
+					case 'channel.channel_points_custom_reward_redemption.add':
+						$tickerState.next(true)
+						break
+					default:
+						break
+				}
+			}),
+		)
+
+		// Not zipping in user because it's not supposed to change without page reload
+		const $eventSubSubscribtions = zip($sessionId, $selectedRedeem.pipe(filter(Boolean)))
+		subscriptions.push(
+			$eventSubSubscribtions.subscribe(([sessionId, reward_id]) => {
+				console.log({ sessionId, reward_id })
+
+				requestTwitch<{}>('POST', 'https://api.twitch.tv/helix/eventsub/subscriptions', {
+					type: 'channel.channel_points_custom_reward_redemption.add',
+					version: '1',
+					condition: {
+						broadcaster_user_id: $currentUser.value,
+						reward_id,
+					},
+					transport: {
+						method: 'websocket',
+						session_id: sessionId,
+					},
+					session_id: sessionId,
 				})
+			}),
+		)
+
+		if (authCode) {
+			subscriptions.push(
+				from(requestTwitch<UsersResponse>('GET', 'https://api.twitch.tv/helix/users'))
+					.pipe(map((users) => users.data[0].id))
+					.subscribe((userId) => {
+						$currentUser.next(userId)
+						set('current_user', userId)
+					}),
+			)
 		}
+
+		let redeems = useObservable($redeems)
+		onUnmounted(() => subscriptions.forEach((sub) => sub.unsubscribe()))
 
 		return {
 			supportUrl,
-			twitchOauthUrl: twitchOauthUrl.toString(),
 
 			redeems,
 

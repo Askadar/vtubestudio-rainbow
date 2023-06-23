@@ -34,3 +34,10 @@ export const setSession = (key: string, data: unknown): void => {
 		console.error(`Failed to set ${key} into storage`, err)
 	}
 }
+
+export const getSession = (key: string): null | string => {
+	const value = localStorage.getItem(key)
+	if (!value) return null
+
+	return value
+}
