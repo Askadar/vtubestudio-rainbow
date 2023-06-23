@@ -27,7 +27,6 @@ concurrency:
 
 env:
   BUILD_PATH: .
-  VITE_TWITCH_REDIRECT_URI: https://askadar.github.io/vtubestudio-rainbow/
 
 jobs:
   build:
@@ -66,6 +65,9 @@ jobs:
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
         working-directory: ${{ env.BUILD_PATH }}
       - name: Bundle vite
+        env:
+          VITE_TWITCH_CLIENT_ID: ${{ secrets.VITE_TWITCH_CLIENT_ID }}
+          VITE_TWITCH_REDIRECT_URI: https://askadar.github.io/vtubestudio-rainbow/
         run: |
           ${{ steps.detect-package-manager.outputs.runner }} run build
         working-directory: ${{ env.BUILD_PATH }}
