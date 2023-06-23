@@ -67,7 +67,7 @@ jobs:
       - name: Bundle vite
         env:
           VITE_TWITCH_CLIENT_ID: ${{ secrets.VITE_TWITCH_CLIENT_ID }}
-          VITE_TWITCH_REDIRECT_URI: ${{ env.VITE_TWITCH_REDIRECT_URI }}
+          VITE_TWITCH_REDIRECT_URI: ${{ vars.VITE_TWITCH_REDIRECT_URI }}
         run: |
           ${{ steps.detect-package-manager.outputs.runner }} run build
         working-directory: ${{ env.BUILD_PATH }}
