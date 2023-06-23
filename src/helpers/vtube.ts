@@ -1,8 +1,7 @@
 import { Color } from 'chroma-js'
 import { Plugin } from 'vtubestudio'
 import { Ref } from 'vue'
-// @ts-ignore
-import { LinearGradient } from 'vue-gpickr'
+import { LinearGradient } from 'vue-gradient-picker'
 
 export interface Settings {
 	meshMatch: string

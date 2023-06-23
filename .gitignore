@@ -3,3 +3,6 @@ node_modules
 dist
 *.db.sqlite*
 .env
+stats.html
+yarn-error.log
+vtubestudio-rainbow.code-workspace

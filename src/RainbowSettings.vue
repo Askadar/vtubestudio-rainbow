@@ -81,22 +81,9 @@
 
 <script lang="ts">
 import { defineComponent, onMounted, PropType, reactive, watch } from 'vue'
-import {
-	NInput,
-	NSpace,
-	NForm,
-	NFormItem,
-	NButton,
-	NSelect,
-	NInputNumber,
-	NSlider,
-	NCheckbox,
-	NTimePicker,
-	NIcon,
-} from 'naive-ui'
 import { Close } from '@vicons/carbon'
-// @ts-ignore should type it
-import { VueGpickr as GradientPicker, LinearGradient } from 'vue-gpickr'
+import { GradientPicker, LinearGradient } from 'vue-gradient-picker'
+import 'vue-gradient-picker/dist/style.css'
 import { get, set, Settings, defaultSettings } from './helpers'
 
 export default defineComponent({
@@ -107,7 +94,7 @@ export default defineComponent({
 		},
 	},
 	setup(_, ctx) {
-		const settings: Settings = reactive({ ...defaultSettings })
+		const settings: Settings = reactive({ ...defaultSettings }) as Settings
 
 		watch(settings, (newSettings) => ctx.emit('settings-change', newSettings))
 
@@ -118,7 +105,7 @@ export default defineComponent({
 				const { gradient, ...genericStoredSettings } = storedSettings
 				Object.assign(settings, genericStoredSettings)
 				if (gradient)
-					settings.gradient = new LinearGradient({ angle: gradient._angle, stops: gradient._stops })
+					settings.gradient = new LinearGradient({ angle: gradient.angle, stops: gradient.stops })
 			}
 		})
 
@@ -127,17 +114,6 @@ export default defineComponent({
 		return { settings, saveSettings }
 	},
 	components: {
-		NSpace,
-		NForm,
-		NFormItem,
-		NInput,
-		NInputNumber,
-		NButton,
-		NSelect,
-		NSlider,
-		NCheckbox,
-		NTimePicker,
-		NIcon,
 		Close,
 		GradientPicker,
 	},

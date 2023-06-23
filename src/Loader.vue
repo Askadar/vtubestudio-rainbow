@@ -24,22 +24,20 @@
 <script lang="ts">
 import { map, take } from 'rxjs'
 import { defineComponent } from 'vue'
-import { refFrom } from 'vuse-rx/src'
-import { NSpace, NGradientText } from 'naive-ui'
 
-import { useVSPluginSingelton } from './helpers'
+import { useVSPluginSingelton, useObservable } from './helpers'
 
 export default defineComponent({
 	setup() {
 		const { $ready, $failed } = useVSPluginSingelton()
-		const loading = refFrom(
+		const loading = useObservable(
 			$ready.pipe(
 				map(() => false),
 				take(1),
 			),
 			true,
 		)
-		const failed = refFrom<string | boolean>(
+		const failed = useObservable<string | boolean>(
 			$failed.pipe(
 				map(
 					() =>
@@ -51,6 +49,5 @@ export default defineComponent({
 
 		return { loading, failed }
 	},
-	components: { NSpace, NGradientText },
 })
 </script>
