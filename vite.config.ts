@@ -25,7 +25,7 @@ export default defineConfig({
 	},
 	publicDir: './public',
 	build: {
-		outDir: './pages',
+		outDir: './dist',
 		rollupOptions: {
 			// output: {
 			// 	manualChunks: {
