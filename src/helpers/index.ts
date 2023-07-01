@@ -6,4 +6,3 @@ export { useObservable } from './useObservable'
 export { useTwitchIGFAuthData, requestTwitch } from './twitch'
 
 export type { Settings } from './vtube'
-export type { UsersResponse, RedeemsResponse } from './twitch'

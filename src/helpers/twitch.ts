@@ -16,6 +16,17 @@ type TwitchRedeem = {
 	title: string
 }
 export type RedeemsResponse = TwitchResponse<TwitchRedeem>
+export type EventSubSubscriptions = TwitchResponse<{
+	id: string
+	status: string | 'websocket_disconnected'
+}>
+
+export type UnknownRequest = {}
+export type UnknownResponse = TwitchResponse<{}>
+export type UQ = UnknownRequest
+export type UR = UnknownResponse
+
+export type GenericResponse = TwitchResponse<{ id: string }>
 
 // Using implicit grant flow https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#implicit-grant-flow
 export const useTwitchIGFAuthData = () => {
@@ -64,7 +75,9 @@ const tryConstructAuthHeaders = () => {
  *
  * @throws Error(`string`) | Error(`http.stats, http.statusText`)
  */
-const handleTwitchResponse = async <T extends object>(resp: Response): Promise<T> => {
+const handleTwitchResponse = async <T extends TwitchResponse<object>>(
+	resp: Response,
+): Promise<T> => {
 	if (!(resp.status >= 200 && resp.status < 300)) {
 		try {
 			throw new Error(await resp.text())
@@ -77,13 +90,29 @@ const handleTwitchResponse = async <T extends object>(resp: Response): Promise<T
 		}
 	}
 
-	return resp.json()
+	try {
+		const json = await resp.json()
+
+		return json
+	} catch (err) {
+		console.warn('JSON parsing error', err)
+
+		// !TODO have to check twitch docs and differentiate DELETE vs other responses
+		return { data: [] as object[] } as T
+	}
 }
 
-type HTTPMethods = 'GET' | 'POST'
-export const requestTwitch = <T extends object>(method: HTTPMethods, url: string, _body?: T) => {
+type HTTPMethods = 'GET' | 'POST' | 'DELETE'
+export const requestTwitch = <
+	R extends TwitchResponse<object> = UnknownResponse,
+	T extends object = UnknownRequest,
+>(
+	method: HTTPMethods,
+	url: string,
+	_body?: T,
+) => {
 	const body = _body ? JSON.stringify(_body) : undefined
 	const headers = tryConstructAuthHeaders()
 
-	return fetch(url, { method, body, headers }).then(handleTwitchResponse<T>)
+	return fetch(url, { method, body, headers }).then(handleTwitchResponse<R>)
 }

@@ -27,9 +27,10 @@
 </template>
 
 <script lang="ts">
-import { computed, ComputedRef, defineComponent, onUnmounted, reactive, ref } from 'vue'
+import { computed, ComputedRef, defineComponent, onUnmounted, reactive } from 'vue'
 import {
 	BehaviorSubject,
+	combineLatest,
 	from,
 	fromEvent,
 	interval,
@@ -38,7 +39,6 @@ import {
 	Subject,
 	Subscription,
 	timer,
-	zip,
 } from 'rxjs'
 import {
 	mergeMap,
@@ -50,7 +50,6 @@ import {
 	switchMap,
 	shareReplay,
 	concatMap,
-	skip,
 	withLatestFrom,
 	pairwise,
 } from 'rxjs/operators'
@@ -67,8 +66,6 @@ import {
 	useObservable,
 	requestTwitch,
 	useTwitchIGFAuthData,
-	UsersResponse,
-	RedeemsResponse,
 	getArtMeshes,
 } from './helpers'
 
@@ -76,6 +73,12 @@ import Loader from './Loader.vue'
 import News from './News.vue'
 import RainbowSettings from './RainbowSettings.vue'
 import { Color, scale } from 'chroma-js'
+import type {
+	EventSubSubscriptions,
+	GenericResponse,
+	UsersResponse,
+	RedeemsResponse,
+} from './helpers/twitch'
 
 export default defineComponent({
 	setup() {
@@ -91,6 +94,16 @@ export default defineComponent({
 
 		const $tickerState = new BehaviorSubject<boolean | undefined>(undefined)
 		const $forceClear = new BehaviorSubject<number>(0)
+
+		const $selectedRedeem = new BehaviorSubject<null | string>(null)
+		const $subscriptionId = new Subject<string>()
+		const $currentUser = new BehaviorSubject<null | string>(get<string>('current_user'))
+		const $redeems = new BehaviorSubject([] as Array<{ label: string; value: string }>)
+		const $sessionId = new Subject<string>()
+		const $eventSub = new BehaviorSubject<WebSocket | null>(null)
+		const $keepalive = new Subject<number>()
+		const $keepaliveInterval = new Subject<Observable<number>>()
+
 		onUnmounted(() => {
 			$tickerState.complete()
 			$forceClear.complete()
@@ -142,12 +155,12 @@ export default defineComponent({
 			}
 
 			if (newSettings.redeem) {
-				if (newSettings.redeem !== $selectedRedeem.value) {
-					$selectedRedeem.next(newSettings.redeem)
-				}
-
 				if (!$eventSub.value) {
 					$eventSub.next(createWebsocket())
+				}
+
+				if (newSettings.redeem !== $selectedRedeem.value) {
+					$selectedRedeem.next(newSettings.redeem)
 				}
 			}
 		}
@@ -191,15 +204,6 @@ export default defineComponent({
 
 		// !TODO be mindful of refactoring new code below
 		const { authCode } = useTwitchIGFAuthData()
-
-		const $selectedRedeem = new BehaviorSubject<null | string>(null)
-		const $currentUser = new BehaviorSubject<null | string>(get<string>('current_user'))
-		const $redeems = new BehaviorSubject([] as Array<{ label: string; value: string }>)
-		const $sessionId = new Subject<string>()
-		const $eventSub = new BehaviorSubject<WebSocket | null>(null)
-		const $keepalive = new Subject<number>()
-		const $keepaliveInterval = new Subject<Observable<number>>()
-
 		// !TODO type message
 		const $notification = new Subject<any>()
 
@@ -275,29 +279,52 @@ export default defineComponent({
 			}),
 		)
 
-		// Not zipping in user because it's not supposed to change without page reload
-		const $eventSubSubscribtions = zip($sessionId, $selectedRedeem.pipe(filter(Boolean)))
 		subscriptions.push(
-			$eventSubSubscribtions.subscribe(([sessionId, reward_id]) => {
-				console.log({ sessionId, reward_id })
+			combineLatest([$selectedRedeem, $sessionId]).subscribe(async ([reward_id, sessionId]) => {
+				const resp = await requestTwitch<GenericResponse>(
+					'POST',
+					'https://api.twitch.tv/helix/eventsub/subscriptions',
+					{
+						type: 'channel.channel_points_custom_reward_redemption.add',
+						version: '1',
+						condition: {
+							broadcaster_user_id: $currentUser.value,
+							reward_id,
+						},
+						transport: {
+							method: 'websocket',
+							session_id: sessionId,
+						},
+					},
+				)
 
-				requestTwitch<{}>('POST', 'https://api.twitch.tv/helix/eventsub/subscriptions', {
-					type: 'channel.channel_points_custom_reward_redemption.add',
-					version: '1',
-					condition: {
-						broadcaster_user_id: $currentUser.value,
-						reward_id,
-					},
-					transport: {
-						method: 'websocket',
-						session_id: sessionId,
-					},
-					session_id: sessionId,
-				})
+				$subscriptionId.next(resp.data[0].id)
+			}),
+		)
+		subscriptions.push(
+			$subscriptionId.pipe(pairwise()).subscribe(([prev]) => {
+				requestTwitch('DELETE', `https://api.twitch.tv/helix/eventsub/subscriptions?id=${prev}`)
 			}),
 		)
 
 		if (authCode) {
+			// Clean up old subscriptions
+			requestTwitch<EventSubSubscriptions>(
+				'GET',
+				'https://api.twitch.tv/helix/eventsub/subscriptions',
+			).then(async (subs) => {
+				await Promise.all(
+					subs.data
+						.filter((sub) => sub.status === 'websocket_disconnected')
+						.map((sub) =>
+							requestTwitch(
+								'DELETE',
+								`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`,
+							),
+						),
+				)
+			})
+
 			subscriptions.push(
 				from(requestTwitch<UsersResponse>('GET', 'https://api.twitch.tv/helix/users'))
 					.pipe(map((users) => users.data[0].id))
