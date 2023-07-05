@@ -55,7 +55,7 @@ import {
 } from 'rxjs/operators'
 
 import {
-	get,
+	get as getState,
 	set,
 	tintClear,
 	tintCustom,
@@ -64,7 +64,7 @@ import {
 	Settings,
 	defaultSettings,
 	useObservable,
-	requestTwitch,
+	useTApi,
 	useTwitchIGFAuthData,
 	getArtMeshes,
 } from './helpers'
@@ -83,8 +83,28 @@ import type {
 export default defineComponent({
 	setup() {
 		const { plugin, $ready } = useVSPluginSingelton()
+		const { post, get, del } = useTApi()
+		const rpm = 30
+		const createTwitchWebsocket = (url = 'wss://eventsub.wss.twitch.tv/ws') => new WebSocket(url)
 
 		const subscriptions: Subscription[] = []
+		onUnmounted(() => subscriptions.forEach((sub) => sub.unsubscribe()))
+
+		const $tickerState = new BehaviorSubject<boolean | undefined>(undefined)
+		const $forceClear = new BehaviorSubject<number>(0)
+		onUnmounted(() => {
+			$tickerState.complete()
+			$forceClear.complete()
+		})
+
+		const $selectedRedeem = new BehaviorSubject<null | string>(null)
+		const $subscriptionId = new Subject<string>()
+		const $currentUser = new BehaviorSubject<null | string>(getState<string>('current_user'))
+		const $redeems = new BehaviorSubject([] as Array<{ label: string; value: string }>)
+		const $sessionId = new Subject<string>()
+		const $eventSub = new BehaviorSubject<WebSocket | null>(null)
+		const $keepalive = new Subject<number>()
+		const $keepaliveInterval = new Subject<Observable<number>>()
 
 		const $meshesList = $ready.pipe(
 			mergeMap(() => getArtMeshes(plugin) || []),
@@ -92,28 +112,9 @@ export default defineComponent({
 			tap((meshes) => set('meshes', meshes)),
 		)
 
-		const $tickerState = new BehaviorSubject<boolean | undefined>(undefined)
-		const $forceClear = new BehaviorSubject<number>(0)
-
-		const $selectedRedeem = new BehaviorSubject<null | string>(null)
-		const $subscriptionId = new Subject<string>()
-		const $currentUser = new BehaviorSubject<null | string>(get<string>('current_user'))
-		const $redeems = new BehaviorSubject([] as Array<{ label: string; value: string }>)
-		const $sessionId = new Subject<string>()
-		const $eventSub = new BehaviorSubject<WebSocket | null>(null)
-		const $keepalive = new Subject<number>()
-		const $keepaliveInterval = new Subject<Observable<number>>()
-
-		onUnmounted(() => {
-			$tickerState.complete()
-			$forceClear.complete()
-		})
 		const $enabled = $tickerState.pipe(filter(Boolean))
 		const $disabled = $tickerState.pipe(filter((state) => state === false))
 		const $cleared = merge($disabled, $forceClear)
-		const tickerState = useObservable($tickerState)
-
-		const rpm = 30
 
 		const sortedStops = computed(() =>
 			[...settings.gradient.stops].sort(
@@ -141,7 +142,6 @@ export default defineComponent({
 			),
 		)
 
-		const createWebsocket = () => new WebSocket('wss://eventsub.wss.twitch.tv/ws')
 		const settings: Settings = reactive({ ...defaultSettings }) as Settings
 		const onSettingsUpdate = (newSettings: Settings) => {
 			const tickerWasEnabled = tickerState.value
@@ -156,7 +156,7 @@ export default defineComponent({
 
 			if (newSettings.redeem) {
 				if (!$eventSub.value) {
-					$eventSub.next(createWebsocket())
+					$eventSub.next(createTwitchWebsocket())
 				}
 
 				if (newSettings.redeem !== $selectedRedeem.value) {
@@ -164,19 +164,6 @@ export default defineComponent({
 				}
 			}
 		}
-
-		const meshesList = useObservable($meshesList, [])
-		const meshOptions = useObservable(
-			$meshesList.pipe(
-				switchMap((meshes) =>
-					from(meshes).pipe(
-						map((mesh) => ({ label: mesh, value: mesh })),
-						toArray(),
-					),
-				),
-			),
-			[],
-		)
 
 		subscriptions.push(
 			$ticker
@@ -211,8 +198,7 @@ export default defineComponent({
 			$currentUser
 				.pipe(
 					mergeMap((userId) =>
-						requestTwitch<RedeemsResponse>(
-							'GET',
+						get<RedeemsResponse>(
 							`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${userId}`,
 						),
 					),
@@ -236,7 +222,7 @@ export default defineComponent({
 					pairwise(),
 					filter((keepAliveIndice) => keepAliveIndice[0] === keepAliveIndice[1]),
 				)
-				.subscribe(() => $eventSub.next(createWebsocket())),
+				.subscribe(() => $eventSub.next(createTwitchWebsocket())),
 		)
 
 		subscriptions.push(
@@ -281,8 +267,7 @@ export default defineComponent({
 
 		subscriptions.push(
 			combineLatest([$selectedRedeem, $sessionId]).subscribe(async ([reward_id, sessionId]) => {
-				const resp = await requestTwitch<GenericResponse>(
-					'POST',
+				const resp = await post<GenericResponse>(
 					'https://api.twitch.tv/helix/eventsub/subscriptions',
 					{
 						type: 'channel.channel_points_custom_reward_redemption.add',
@@ -302,41 +287,47 @@ export default defineComponent({
 			}),
 		)
 		subscriptions.push(
-			$subscriptionId.pipe(pairwise()).subscribe(([prev]) => {
-				requestTwitch('DELETE', `https://api.twitch.tv/helix/eventsub/subscriptions?id=${prev}`)
+			$subscriptionId.pipe(pairwise()).subscribe(async ([prev]) => {
+				await del(`https://api.twitch.tv/helix/eventsub/subscriptions?id=${prev}`)
 			}),
 		)
 
 		if (authCode) {
 			// Clean up old subscriptions
-			requestTwitch<EventSubSubscriptions>(
-				'GET',
-				'https://api.twitch.tv/helix/eventsub/subscriptions',
-			).then(async (subs) => {
-				await Promise.all(
-					subs.data
-						.filter((sub) => sub.status === 'websocket_disconnected')
-						.map((sub) =>
-							requestTwitch(
-								'DELETE',
-								`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`,
-							),
-						),
-				)
-			})
-
-			subscriptions.push(
-				from(requestTwitch<UsersResponse>('GET', 'https://api.twitch.tv/helix/users'))
-					.pipe(map((users) => users.data[0].id))
-					.subscribe((userId) => {
-						$currentUser.next(userId)
-						set('current_user', userId)
-					}),
-			)
+			get<EventSubSubscriptions>('https://api.twitch.tv/helix/eventsub/subscriptions')
+				.then(async (subs) => {
+					await Promise.all(
+						subs.data
+							.filter((sub) => sub.status === 'websocket_disconnected')
+							.map((sub) => del(`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`)),
+					)
+				})
+				.then(() => {
+					subscriptions.push(
+						from(get<UsersResponse>('https://api.twitch.tv/helix/users'))
+							.pipe(map((users) => users.data[0].id))
+							.subscribe((userId) => {
+								$currentUser.next(userId)
+								set('current_user', userId)
+							}),
+					)
+				})
 		}
 
+		const tickerState = useObservable($tickerState)
+		const meshesList = useObservable($meshesList, [])
+		const meshOptions = useObservable(
+			$meshesList.pipe(
+				switchMap((meshes) =>
+					from(meshes).pipe(
+						map((mesh) => ({ label: mesh, value: mesh })),
+						toArray(),
+					),
+				),
+			),
+			[],
+		)
 		let redeems = useObservable($redeems)
-		onUnmounted(() => subscriptions.forEach((sub) => sub.unsubscribe()))
 
 		return {
 			supportUrl,
