@@ -20,7 +20,7 @@
 			target="_useless-help"
 			:href="supportUrl"
 		>
-			Look for help here.
+			Child support group (you're the child)
 		</a>
 		<news />
 	</n-layout>
@@ -197,6 +197,7 @@ export default defineComponent({
 		subscriptions.push(
 			$currentUser
 				.pipe(
+					filter(Boolean),
 					mergeMap((userId) =>
 						get<RedeemsResponse>(
 							`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${userId}`,

@@ -2,7 +2,6 @@ import { get, set, getSession, setSession } from './storage'
 
 const TWITCH_STATE_KEY = 'twitch_oauth_state'
 const TWITCH_AUTH_KEY = 'twitch_oauth_code'
-let thisSessionState: string | null = null
 
 type TwitchResponse<T> = {
 	data: T[]
@@ -29,6 +28,7 @@ export type UR = UnknownResponse
 export type GenericResponse = TwitchResponse<{ id: string }>
 
 // Using implicit grant flow https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#implicit-grant-flow
+let thisSessionState: string | null = null
 export const useTwitchIGFAuthData = () => {
 	let authCode: string | null = null
 	if (document.location.hash.length) {
@@ -61,8 +61,7 @@ export const useTwitchIGFAuthData = () => {
 }
 
 export const useTApi = () => {
-	const authCode = get(TWITCH_AUTH_KEY)
-	if (!authCode) throw new Error(`Missing auth code`)
+	const { authCode } = useTwitchIGFAuthData()
 
 	const headers = new Headers([
 		['Client-Id', import.meta.env.VITE_TWITCH_CLIENT_ID],
