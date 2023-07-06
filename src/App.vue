@@ -174,13 +174,15 @@ export default defineComponent({
 			$enabled.pipe(filter(() => settings.jebMode)).subscribe(tintJeb(plugin, settings)),
 		)
 
-		$enabled
-			.pipe(
-				filter(() => settings.timeoutAfter > 1e3),
-				concatMap(() => timer(settings.timeoutAfter).pipe(takeUntil($disabled))),
-				filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value),
-			)
-			.subscribe(() => $tickerState.next(false))
+		subscriptions.push(
+			$enabled
+				.pipe(
+					filter(() => settings.timeoutAfter > 1e3),
+					concatMap(() => timer(settings.timeoutAfter).pipe(takeUntil($disabled))),
+					filter(() => settings.timeoutAfter > 1e3 && !!tickerState.value),
+				)
+				.subscribe(() => $tickerState.next(false)),
+		)
 		subscriptions.push($cleared.subscribe(tintClear(plugin)))
 
 		const toggleState = async () => {
@@ -189,8 +191,6 @@ export default defineComponent({
 
 		const supportUrl = import.meta.env.VITE_SUPPORT_URL
 
-		// !TODO be mindful of refactoring new code below
-		const { authCode } = useTwitchIGFAuthData()
 		// !TODO type message
 		const $notification = new Subject<any>()
 
@@ -293,6 +293,7 @@ export default defineComponent({
 			}),
 		)
 
+		const { authCode } = useTwitchIGFAuthData()
 		if (authCode) {
 			// Clean up old subscriptions
 			get<EventSubSubscriptions>('https://api.twitch.tv/helix/eventsub/subscriptions')
