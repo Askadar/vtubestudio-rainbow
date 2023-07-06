@@ -51,13 +51,13 @@ interface NewsEntry {
 }
 
 const defaultUpdates: Updates = {
-	version: 0,
+	version: 2,
 	dontShow: false,
 }
 
 const news: NewsEntry[] = [
 	{
-		title: `Proper Customizaaion Update`,
+		title: `Proper Customization Update`,
 		description: [
 			`So, ye, first decently major update that's not just fixing and patching up baseline purpose of this thing.`,
 			`There shouldn't be much to say, you can now create your own unique pattern, be it for cool visual effect, or for dumb but oh so great memes; power is yours. And yeah, now I can also bother you with "patch notes" whenever I feel like it.`,
@@ -69,7 +69,22 @@ const news: NewsEntry[] = [
 			{ label: 'Twatter, go get it, son', href: 'https://twitter.com/ZN_Development' },
 			{
 				label: `Child support group (you're the child)`,
-				href: import.meta.env.VITE_SUPPORT_URL as string,
+				href: import.meta.env.VITE_SUPPORT_URL,
+			},
+		],
+	},
+	{
+		title: `Twitch Integration Update`,
+		description: [
+			`Helo yet again, magic of automation (and corporate tracking) is coming right to you!`,
+			`New big thing is ability to authenticate with twitch, and select reward that will start Cycler when it's redeemed. Works nicely with automatic deactivation timer, letting you stop bothering with unnecessary fiddling.`,
+			`That's kind of it, there are few other big things on the way, but it's not yet here and would require quite some shuffling around.`,
+			`Oh right, twitter died recently, huh, very unfortunate indeed, oh well. Take care.`
+		],
+		links: [
+			{
+				label: `Child support group (you're the child)`,
+				href: import.meta.env.VITE_SUPPORT_URL,
 			},
 		],
 	},
