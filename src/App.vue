@@ -7,10 +7,13 @@
 						@settings-change="onSettingsUpdate"
 						:mesh-options="meshOptions"
 						:redeems="redeems"
-					/>
-					<n-button @click="toggleState" type="primary">{{
-						!tickerState ? 'Enable' : 'Disable'
-					}}</n-button>
+					>
+						<template v-slot:enable-button>
+							<n-button @click="toggleState" type="primary">
+								{{ !tickerState ? 'Enable' : 'Disable' }}
+							</n-button>
+						</template>
+					</rainbow-settings>
 				</n-space>
 			</loader>
 		</n-layout-content>
@@ -52,7 +55,9 @@ import {
 	concatMap,
 	withLatestFrom,
 	pairwise,
+	catchError,
 } from 'rxjs/operators'
+import { useMessage } from 'naive-ui'
 
 import {
 	get as getState,
@@ -66,6 +71,7 @@ import {
 	useObservable,
 	useTApi,
 	useTwitchIGFAuthData,
+	TwitchErrorCode,
 	getArtMeshes,
 } from './helpers'
 
@@ -84,6 +90,7 @@ export default defineComponent({
 	setup() {
 		const { plugin, $ready } = useVSPluginSingelton()
 		const { post, get, del } = useTApi()
+		const { error } = useMessage()
 		const rpm = 30
 		const createTwitchWebsocket = (url = 'wss://eventsub.wss.twitch.tv/ws') => new WebSocket(url)
 
@@ -203,6 +210,17 @@ export default defineComponent({
 							`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${userId}`,
 						),
 					),
+					catchError((err) => {
+						if (err.message == TwitchErrorCode.LackingLevel) {
+							error(
+								`Unfortunately you have to be either affilate or partner to use redeems. There's no functionality to provide without them.`,
+								{ duration: 10e3, closable: true },
+							)
+							location.hash = ''
+						}
+
+						return []
+					}),
 				)
 				.subscribe((redeems) => {
 					$redeems.next(redeems.data.map(({ id, title }) => ({ label: title, value: id })))

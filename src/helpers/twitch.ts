@@ -3,6 +3,11 @@ import { get, set, getSession, setSession } from './storage'
 const TWITCH_STATE_KEY = 'twitch_oauth_state'
 const TWITCH_AUTH_KEY = 'twitch_oauth_code'
 
+export enum TwitchErrorCode {
+	LackingLevel = 'LackingLevel',
+	Unexpected = 'Unexpected',
+}
+
 type TwitchResponse<T> = {
 	data: T[]
 }
@@ -76,14 +81,24 @@ export const useTApi = () => {
 		resp: Response,
 	): Promise<T> => {
 		if (!(resp.status >= 200 && resp.status < 300)) {
+			let json
+
 			try {
-				throw new Error(await resp.text())
+				const text = await resp.text()
+				json = JSON.parse(text)
 			} catch (err) {
 				console.warn('Twitch API error', err)
 
 				throw new Error(
 					`Unexpected error parsing Twitch API response: [${resp.status}] ${resp.statusText}`,
 				)
+			}
+
+			switch (json.message) {
+				case 'The broadcaster must have partner or affiliate status.':
+					throw new Error(TwitchErrorCode.LackingLevel)
+				default:
+					throw new Error(TwitchErrorCode.Unexpected)
 			}
 		}
 
