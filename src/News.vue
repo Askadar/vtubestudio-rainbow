@@ -74,10 +74,10 @@ const news: NewsEntry[] = [
 		],
 	},
 	{
-		title: `Twitch Integraion Update`,
+		title: `Twitch Integration Update`,
 		description: [
-			`Helo yet again, magic of automation (and corporate tracking) is coming right to you`,
-			`New big thing is ability to authenticate with twitch, and select reward that will start Cycler when it's redeemed. Works very nicely with automatic deactivation timer, letting you stop bothering with unnecessary fiddling.`,
+			`Helo yet again, magic of automation (and corporate tracking) is coming right to you!`,
+			`New big thing is ability to authenticate with twitch, and select reward that will start Cycler when it's redeemed. Works nicely with automatic deactivation timer, letting you stop bothering with unnecessary fiddling.`,
 			`That's kind of it, there are few other big things on the way, but it's not yet here and would require quite some shuffling around.`,
 			`Oh right, twitter died recently, huh, very unfortunate indeed, oh well. Take care.`
 		],
